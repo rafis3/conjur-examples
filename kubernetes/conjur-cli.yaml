@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: conjur-cli
+  labels:
+    app: conjur-cli
+spec:
+  serviceAccountName: default
+  containers:
+  - name: conjur-cli
+    image: cyberark/conjur-cli:5-latest
+    imagePullPolicy: Always
+    command: ["sleep"]
+    args: ["infinity"]

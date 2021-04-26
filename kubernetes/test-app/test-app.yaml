@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-app
+  name: test-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      serviceAccountName: test-app-sa
+      containers:
+      - image: test-app:latest
+        imagePullPolicy: IfNotPresent
+        name: test-app
+        env:
+          - name: CONJUR_APPLIANCE_URL
+            value: https://conjur-conjur-oss.conjur.svc.cluster.local
+          - name: CONJUR_ACCOUNT
+            value: default
+          - name: CONJUR_AUTHN_TOKEN_FILE
+            value: /run/conjur/access-token
+          - name: SLEEP_INTERVAL
+            value: "10"
+          - name: CONJUR_SSL_CERTIFICATE
+            valueFrom:
+              configMapKeyRef:
+                name: conjur-certificate
+                key: ssl-certificate.pem
+        volumeMounts:
+          - mountPath: /run/conjur
+            name: conjur-access-token
+            readOnly: true
+      - image: cyberark/conjur-authn-k8s-client
+        imagePullPolicy: Always
+        name: authenticator
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: CONJUR_AUTHN_URL
+            value: https://conjur-conjur-oss.conjur.svc.cluster.local/authn-k8s/demo
+          - name: CONJUR_ACCOUNT
+            value: default
+          - name: CONJUR_AUTHN_LOGIN
+            value: host/kubernetes/apps/my-app
+          - name: CONJUR_SSL_CERTIFICATE
+            valueFrom:
+              configMapKeyRef:
+                name: conjur-certificate
+                key: ssl-certificate.pem
+        volumeMounts:
+          - mountPath: /run/conjur
+            name: conjur-access-token
+      imagePullSecrets:
+        - name: dockerpullsecret
+      volumes:
+        - name: conjur-access-token
+          emptyDir:
+            medium: Memory
